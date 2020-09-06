@@ -1,0 +1,30 @@
+<html>
+<body style="background-color:yellow"</body>
+
+    <head>
+        <style>
+            @import url(style.css);
+            p.highlight {
+                color: red;
+            }
+            svg {
+                background-color: rgb(41, 41, 36);
+            }
+        </style>
+        <script src="./dist/pong.js"></script>
+    </head>
+    <div class="game"id="game">
+    <body>
+        <h1>PONG</h1>
+        <p style="text-indent:15%">   PLAYER   VS COMPUTER</p>
+        </div>
+        <svg id="canvas" width="600" height="600"/
+        <svg height="0" width="0">
+        <line x1="300" y1="0" x2="300" y2="600" style="stroke:white;stroke-width:10"/>
+        <rect width="10" height="50" x="20" y="530" style="fill:white" id="player"/>
+        <rect width="10" height="50" x="550" y="20" style="fill:white" id="computer" />
+        <circle r="10" cx="300" cy="300" style="fill:cyan" id="ball" />
+        </svg>
+        <button id="start" type="button">Start Game</button>
+    </body>
+</html>
