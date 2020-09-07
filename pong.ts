@@ -10,7 +10,9 @@ function getRandomArbitrary(min:number, max:number):number {
 }
 
 type State=Readonly<{
-  speed:number 
+  yMovement:number
+  xMovement:number 
+  speed:number
 }>
 
 function pong():void {
@@ -28,28 +30,49 @@ function pong():void {
     const computerpaddle=document.getElementById("computer")
     const arrowUp=fromEvent(document,"keydown").pipe(filter((x:KeyboardEvent)=>x.key=="ArrowUp")).pipe(map((x)=>(-10))).subscribe((x:number)=> (Number(playerpaddle.getAttribute("y"))>5?(playerpaddle.setAttribute("y",String(x+Number(playerpaddle.getAttribute("y"))))):0))
     const arrowDown=fromEvent(document,'keydown').pipe(filter((x:KeyboardEvent)=>x.key=="ArrowDown")).pipe(map(x=>(10))).subscribe((x:number)=> (Number(playerpaddle.getAttribute("y"))<545?(playerpaddle.setAttribute("y",String(x+Number(playerpaddle.getAttribute("y"))))):0))
-    const arrowRight=fromEvent(document,"keydown").pipe(filter((x:KeyboardEvent)=>x.key=="ArrowRight")).pipe(map(x=>10)).subscribe((x:number)=> (Number(playerpaddle.getAttribute("x"))<280?(playerpaddle.setAttribute("x",String(x+Number(playerpaddle.getAttribute("x"))))):0))
-    const arrowLeft=fromEvent(document,"keydown").pipe(filter((x:KeyboardEvent)=>x.key=="ArrowLeft")).pipe(map(x=>(-10))).subscribe((x:number)=> (Number(playerpaddle.getAttribute("x"))>0?(playerpaddle.setAttribute("x",String(x+Number(playerpaddle.getAttribute("x"))))):0))
+    // const arrowRight=fromEvent(document,"keydown").pipe(filter((x:KeyboardEvent)=>x.key=="ArrowRight")).pipe(map(x=>10)).subscribe((x:number)=> (Number(playerpaddle.getAttribute("x"))<280?(playerpaddle.setAttribute("x",String(x+Number(playerpaddle.getAttribute("x"))))):0))
+    // const arrowLeft=fromEvent(document,"keydown").pipe(filter((x:KeyboardEvent)=>x.key=="ArrowLeft")).pipe(map(x=>(-10))).subscribe((x:number)=> (Number(playerpaddle.getAttribute("x"))>0?(playerpaddle.setAttribute("x",String(x+Number(playerpaddle.getAttribute("x"))))):0))
     score()    
     const random=getRandomArbitrary(-1,1.01)
     const random2=getRandomArbitrary(-1,1.01)
 
     
-    const initialState:State={speed:10}
+    const initialState:State=
+    {yMovement:2,
+      xMovement:-5,
+      speed:2
+    }
     const physics=(s:State):State=>{
-      if (Number(ball.getAttribute("cy"))>600||Number(ball.getAttribute("cy"))<0)
+      if (Number(ball.getAttribute("cy"))>589||Number(ball.getAttribute("cy"))<11)
       return{
-        speed:-s.speed
+        yMovement:-s.yMovement,
+        xMovement:s.xMovement,
+        speed:s.speed
       }
+      if (Number(ball.getAttribute("cx"))<(Number(playerpaddle.getAttribute("x"))+10+11)&&(
+      (Number(ball.getAttribute("cx"))+10+11>Number(playerpaddle.getAttribute("x"))))&&(Number(ball.getAttribute("cy"))+11+3>Number(playerpaddle.getAttribute("y")))&&
+      Number(ball.getAttribute("cy"))<Number(playerpaddle.getAttribute("y"))+11+3+50){
+      return{
+        yMovement:s.yMovement,
+        xMovement:-s.xMovement,
+        speed:s.speed
+      }}
       else{
         return s
       }
     }
 
 
+//     (ball.position.X > (paddle.position.X - radius - paddle.Width / 2)) &&
+// (ball.position.X < (paddle.position.X + radius + paddle.Width / 2)) &&
+// (ball.position.Y < paddle.position.Y) &&
+// (ball.position.Y > (paddle.position.Y - radius - paddle.Height / 2))
+
+
+
     //Observable to start game off with then will be subsscribed into various streams.
 
-    const startGame$=interval(10).pipe(takeWhile(x=>(Number(ball.getAttribute("cx"))<600) && Number(ball.getAttribute("cx"))>0))
+    const startGame$=interval(60).pipe(takeWhile(x=>(Number(ball.getAttribute("cx"))<600) && Number(ball.getAttribute("cx"))>0))
     // const startGame=interval(10).pipe(filter(x=>true))
     // pipe(map(x=>Number(ball.getAttribute("cx"))>Number(playerpaddle.getAttribute("cx"))?-Number(ball.getAttribute("cx")):Number(ball.getAttribute("cx")))).
     // subscribe(_=>(ball.setAttribute("cx",String(Number(ball.getAttribute("cx"))+_)),ball.setAttribute("cy",String(Number(ball.getAttribute("cy"))+(random>0 && random2<0?random2*-1:random2)))))
@@ -61,16 +84,18 @@ function pong():void {
 
 
     //This is for ball movement
-    startGame$.pipe(scan(physics,initialState)).subscribe(x=>(ball.setAttribute("cx",String(Number(ball.getAttribute("cx"))+1)),ball.setAttribute("cy",String((Number(ball.getAttribute("cy")))+x.speed))))
+    startGame$.pipe(scan(physics,initialState)).subscribe(x=>(ball.setAttribute("cx",String(Number(ball.getAttribute("cx"))+x.xMovement*x.speed)),ball.setAttribute("cy",String((Number(ball.getAttribute("cy")))+x.yMovement*x.speed))))
 
     
 
 
     //Ball collision for y axis
-    startGame$.pipe(map(x=>Number(ball.getAttribute("cy")))).pipe(filter((y:number)=>y>600||y<0)).subscribe(()=>physics(initialState).speed)
+    // startGame$.pipe(map(x=>Number(ball.getAttribute("cy")))).pipe(filter((y:number)=>y>589||y<11)).subscribe(x=>physics(initialState))
 
-
-
+    // //Ball collision with player paddle
+    // startGame$.pipe(map(x=>([Number(ball.getAttribute("cy")),Number(ball.getAttribute("cx")),Number(playerpaddle.getAttribute("x")),Number(playerpaddle.getAttribute("y"))]))).
+    // pipe(filter((y:number[])=>y[1]-20<=y[2]))
+    // .subscribe(x=>paddleLogic(initialState))
  
 
 
