@@ -9,11 +9,23 @@ function getRandomArbitrary(min:number, max:number):number {
   return Math.random() * (max - min) + min;
 }
 
+
 type State=Readonly<{
-  yMovement:number
-  xMovement:number 
-  speed:number
+  yspeed:number
+  xspeed:number 
+  speedBall:number
 }>
+
+
+//https://www.reddit.com/r/learnprogramming/comments/q7jl3/pong_ball_deflection/c3vh3p2/?context=8&depth=9
+class Vector{
+  constructor(public readonly xspeed: number = 0,public readonly yspeed: number = 0,public readonly paddle:HTMLElement,public readonly posballY: number,public readonly ballSpeed:number){}
+  readonly currentSpeed=()=>Math.sqrt(this.xspeed*this.xspeed+this.yspeed*this.yspeed)
+  readonly angle=()=>((this.posballY-Number(this.paddle.getAttribute("y"))+25)/10*0.5236+Math.PI/2)
+  readonly xDirection=()=>-Math.sign(this.xspeed)*Math.sin(this.angle())
+  readonly yDirection=()=>Math.cos(this.angle())
+  readonly ballVelocity=()=>Math.sqrt(Math.pow(this.xDirection()*this.ballSpeed,2)+Math.pow(this.yDirection()*this.ballSpeed,2))
+}
 
 function pong():void {
     // Inside this function you will use the classes and functions 
@@ -24,6 +36,9 @@ function pong():void {
     // You will be marked on your functional programming style
     // as well as the functionality that you implement.
     // Document your code!  
+
+
+
     const button=document.getElementById("start")
     const ball=document.getElementById("ball")
     const playerpaddle=document.getElementById("player")
@@ -38,24 +53,29 @@ function pong():void {
 
     
     const initialState:State=
-    {yMovement:2,
-      xMovement:-5,
-      speed:2
+    {yspeed:1.5,
+      xspeed:-3,
+      speedBall:2,
+  
     }
+
+
     const physics=(s:State):State=>{
       if (Number(ball.getAttribute("cy"))>589||Number(ball.getAttribute("cy"))<11)
       return{
-        yMovement:-s.yMovement,
-        xMovement:s.xMovement,
-        speed:s.speed
+        yspeed:-s.yspeed,
+        xspeed:s.xspeed,
+        speedBall:s.speedBall
       }
+
+
       if (Number(ball.getAttribute("cx"))<(Number(playerpaddle.getAttribute("x"))+10+11)&&(
       (Number(ball.getAttribute("cx"))+10+11>Number(playerpaddle.getAttribute("x"))))&&(Number(ball.getAttribute("cy"))+11+3>Number(playerpaddle.getAttribute("y")))&&
       Number(ball.getAttribute("cy"))<Number(playerpaddle.getAttribute("y"))+11+3+50){
       return{
-        yMovement:s.yMovement,
-        xMovement:-s.xMovement,
-        speed:s.speed
+        yspeed:new Vector(s.xspeed,s.yspeed,playerpaddle,Number(ball.getAttribute("cy")),s.speedBall).yDirection(),
+        xspeed:-s.xspeed,
+        speedBall:new Vector(s.xspeed,s.yspeed,playerpaddle,Number(ball.getAttribute("cy")),s.speedBall).ballVelocity()
       }}
       else{
         return s
@@ -84,7 +104,7 @@ function pong():void {
 
 
     //This is for ball movement
-    startGame$.pipe(scan(physics,initialState)).subscribe(x=>(ball.setAttribute("cx",String(Number(ball.getAttribute("cx"))+x.xMovement*x.speed)),ball.setAttribute("cy",String((Number(ball.getAttribute("cy")))+x.yMovement*x.speed))))
+    startGame$.pipe(scan(physics,initialState)).subscribe(x=>(ball.setAttribute("cx",String(Number(ball.getAttribute("cx"))+x.xspeed*x.speedBall)),ball.setAttribute("cy",String((Number(ball.getAttribute("cy")))+x.yspeed*x.speedBall))))
 
     
 
