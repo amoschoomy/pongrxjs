@@ -47,7 +47,6 @@ const resetBall=(ball:HTMLElement)=>{
   ball.setAttribute("vx","2")
   ball.setAttribute("vy","-3")
 }
-
 function pong():void {
     // Inside this function you will use the classes and functions 
     // from rx.js
@@ -123,8 +122,10 @@ function pong():void {
       }
     }
 
+    const restartGame=fromEvent
+
     //Endgame condition
-    const startGame$=interval(60).pipe(takeWhile(x=>(Number(aiscore.getAttribute("value"))<7 && Number(playerscore.getAttribute("value"))<7)))
+    const startGame$=interval(60).pipe(takeWhile(x=>(Number(aiscore.getAttribute("value"))<7 && Number(playerscore.getAttribute("value"))<7))).pipe(repeat())
     startGame$.pipe(filter(x=>(Number(ball.getAttribute("cx"))>590) || Number(ball.getAttribute("cx"))<10)).subscribe(x=>{resetBall(ball)})
   
     //AI movement
@@ -160,6 +161,13 @@ function pong():void {
     computerscore:Number(aiscore.getAttribute("value"))
   }
     )(aiscore))))
+
+    // startGame$.pipe()
+    const restart=document.getElementById("restart")
+    fromEvent(restart,"click").subscribe(x=>{resetScoreboard(),resetBall(document.getElementById("ball"))})
+    
+    
+  
   
   }
 
@@ -204,18 +212,28 @@ function pong():void {
     aiscore.setAttribute("value",String(s.computerscore))
   }
 
-  
-   
+  const resetScoreboard=():void=>{
+    const playerscore=document.getElementById("playerscore")
+    const aiscore=document.getElementById("computerscore")
+    playerscore.innerHTML="Player Score: "+ 0
+    aiscore.innerHTML="Computer Score: "+ 0
+    playerscore.setAttribute("value","0")
+    aiscore.setAttribute("value","0")
+
+  }
+ 
+
     
     // if(y + dy > canvas.height || y + dy < 0) {
     //   dy = -dy;
-   const windowClear=()=>(document.body.innerHTML="")
   
   // the following simply runs your pong function on window load.  Make sure to leave it in place.
   if (typeof window != 'undefined')
     window.onload = ()=>{
       fromEvent(document.getElementById("start"),"click").pipe(take(1)).subscribe(x=>pong())
       // fromEvent(document.getElementById("restart"),"click").subscribe(x=>(windowClear(),alert()))
+      const restart=document.getElementById("restart")
+      
 
 
     }
