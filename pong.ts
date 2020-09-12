@@ -1,12 +1,25 @@
 import { interval, fromEvent, from, zip, NextObserver, ObjectUnsubscribedError, Observable, timer, of, merge, pipe } from 'rxjs'
 import { map, scan, filter, flatMap, take, concat, takeUntil, takeWhile, groupBy, repeat, startWith, switchMap, first, publish, last, reduce,} from 'rxjs/operators'
 
-
-/*function to get random numbers
-// Referenced from:
-//https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Math/random */
-function getRandomArbitrary(min:number, max:number):number { 
-  return Math.random() * (max - min) + min;
+//Class RNG to generate pseudorandom numbers
+//Taken from Week 4 Tutorial FIT2102 
+class RNG {
+  // LCG using GCC's constants
+  m = 0x80000000// 2**31
+  a = 1103515245
+  c = 12345
+  state
+  constructor(seed) {
+    this.state = seed ? seed : Math.floor(Math.random() * (this.m - 1));
+  }
+  nextInt() {
+    this.state = (this.a * this.state + this.c) % this.m;
+    return this.state;
+  }
+  nextFloat() {
+    // returns in range [0,1]
+    return this.nextInt() / (this.m - 1);
+  }
 }
 
 //Interface for ball state
@@ -57,8 +70,8 @@ class Vector{
 const resetBall=(ball:HTMLElement)=>{
   ball.setAttribute("cx","300")
   ball.setAttribute("cy","300")
-  ball.setAttribute("vx",String(getRandomArbitrary(-4,4)))
-  ball.setAttribute("vy",String(getRandomArbitrary(-4,4)))
+  ball.setAttribute("vx",String(new RNG(69).nextFloat()*4-1))
+  ball.setAttribute("vy",String(new RNG(126).nextFloat()*4-1))
 }
 
 //Pong function to run the game
@@ -123,18 +136,12 @@ function pong():void {
     
 
 
-    //Creates scoreboard at canvas //Function can be found at line 240++
+    //Creates scoreboard at canvas //Function can be found at line 290++
     scoreboard()
 
     const playerscore=document.getElementById("playerscore")
     const aiscore=document.getElementById("computerscore")
-    //Initial state of ball
 
-    const initialBallState:BallState=
-    {yvelocity:Number(ball.getAttribute("vy")),
-      xvelocity:Number(ball.getAttribute("vx")),
-      speedBall:2,
-    }
     //Initial state of player scores
     const initialScore:Scores={
       playerscore:0,
@@ -218,7 +225,7 @@ function pong():void {
     //Result of the function, we apply the values to the ball to move the ball accordingly
     const ballMovement=startGame$.pipe(map(x=>({yvelocity:Number(ball.getAttribute("vy")),
     xvelocity:Number(ball.getAttribute("vx")),
-    speedBall:5,}))).
+    speedBall:6,}))).
     pipe(map((x:BallState)=>physics(x)(humanplayer,aiplayer))).
     subscribe((x:BallState)=>{
     ball.setAttribute("cx",String(Number(ball.getAttribute("cx"))+x.xvelocity*x.speedBall)),
