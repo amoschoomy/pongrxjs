@@ -1,52 +1,67 @@
-// import { observable, Observable, of, Subscriber } from "rxjs";
-// import { interval, fromEvent, merge, from, zip, NextObserver, ObjectUnsubscribedError,timer } from 'rxjs'
-// import { ComplexOuterSubscriber } from "rxjs/internal/innerSubscribe";
-// import { map, scan, filter, flatMap, take, concat, takeUntil, takeWhile, groupBy} from 'rxjs/operators'
 import { interval, fromEvent, from, zip, NextObserver, ObjectUnsubscribedError, Observable, timer, of, merge, pipe } from 'rxjs'
 import { map, scan, filter, flatMap, take, concat, takeUntil, takeWhile, groupBy, repeat, startWith, switchMap, first, publish, last, reduce,} from 'rxjs/operators'
 
 
-//https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Math/random
+/*function to get random numbers
+// Referenced from:
+//https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Math/random */
 function getRandomArbitrary(min:number, max:number):number { 
   return Math.random() * (max - min) + min;
 }
 
-
-type State=Readonly<{
+//Interface for ball state
+type BallState=Readonly<{
   yvelocity:number
   xvelocity:number 
   speedBall:number
 }>
 
+//Interface for player and computer score
 type Scores=Readonly<{
   playerscore:number
   computerscore:number
 }>
 
+//Interface for state of the paddle
+type PaddleState=Readonly<{
+  xpos:number
+  ypos:number
+}>
 
 
 
+//class for human paddle
 class Human{constructor(public readonly paddle:HTMLElement){}}
-class AI{constructor(public readonly paddle:HTMLElement,public readonly difficulty:number){}}
 
+//class for AI paddle, difficulty is default unless specified by user
+class AI{constructor(public readonly paddle:HTMLElement,public readonly difficulty=1){}}
+
+type Controller= AI|Human
+
+// Math vector calculations for ball x velocity and y velocity
+//Referenced from:
 //https://www.reddit.com/r/learnprogramming/comments/q7jl3/pong_ball_deflection/c3vh3p2/?context=8&depth=9
 class Vector{
   constructor(public readonly xspeed: number = 0,public readonly yspeed: number = 0,public readonly paddle:HTMLElement,public readonly posballY: number,public readonly ballSpeed:number){}
-  readonly currentSpeed=()=>Math.sqrt(this.xspeed*this.xspeed+this.yspeed*this.yspeed)
-  readonly angle=()=>((this.posballY-Number(this.paddle.getAttribute("y"))+25)/(10*0.428+Math.PI/2))
-  readonly vx=()=>-Math.sign(this.xspeed)*Math.sin(this.angle())*this.currentSpeed()
-  readonly vy=()=>Math.cos(this.angle())*this.currentSpeed()
-  readonly ballVelocity=()=>Math.sqrt(Math.pow(this.vx()*this.ballSpeed,2)+Math.pow(this.vy()*this.ballSpeed,2))
+  readonly currentSpeed=():number=>Math.sqrt(this.xspeed*this.xspeed+this.yspeed*this.yspeed)
+  readonly angle=():number=>((this.posballY-Number(this.paddle.getAttribute("y"))+25)/(10*0.428+Math.PI/2))
+  readonly vx=():number=>-Math.sign(this.xspeed)*Math.sin(this.angle())*this.currentSpeed()
+  readonly vy=():number=>Math.cos(this.angle())*this.currentSpeed()
+  readonly ballVelocity=():number=>Math.sqrt(Math.pow(this.vx()*this.ballSpeed,2)+Math.pow(this.vy()*this.ballSpeed,2))
 
 
 }
 
+
+//Function to reset ball attributes
 const resetBall=(ball:HTMLElement)=>{
   ball.setAttribute("cx","300")
   ball.setAttribute("cy","300")
-  ball.setAttribute("vx","2")
-  ball.setAttribute("vy","-3")
+  ball.setAttribute("vx",String(getRandomArbitrary(-4,4)))
+  ball.setAttribute("vy",String(getRandomArbitrary(-4,4)))
 }
+
+//Pong function to run the game
 function pong():void {
     // Inside this function you will use the classes and functions 
     // from rx.js
@@ -59,112 +74,182 @@ function pong():void {
 
 
 
-    const button=document.getElementById("start")
+    //Get other elements from HTML
     const ball=document.getElementById("ball")
     const playerpaddle=document.getElementById("player")
     const computerpaddle=document.getElementById("computer")
-    const arrowUp=fromEvent(document,"keydown").pipe(filter((x:KeyboardEvent)=>x.key=="ArrowUp")).pipe(map((x)=>(-10))).subscribe((x:number)=> (Number(playerpaddle.getAttribute("y"))>5?(playerpaddle.setAttribute("y",String(x+Number(playerpaddle.getAttribute("y"))))):0))
-    const arrowDown=fromEvent(document,'keydown').pipe(filter((x:KeyboardEvent)=>x.key=="ArrowDown")).pipe(map(x=>(10))).subscribe((x:number)=> (Number(playerpaddle.getAttribute("y"))<545?(playerpaddle.setAttribute("y",String(x+Number(playerpaddle.getAttribute("y"))))):0))
-    // const arrowRight=fromEvent(document,"keydown").pipe(filter((x:KeyboardEvent)=>x.key=="ArrowRight")).pipe(map(x=>10)).subscribe((x:number)=> (Number(playerpaddle.getAttribute("x"))<280?(playerpaddle.setAttribute("x",String(x+Number(playerpaddle.getAttribute("x"))))):0))
-    // const arrowLeft=fromEvent(document,"keydown").pipe(filter((x:KeyboardEvent)=>x.key=="ArrowLeft")).pipe(map(x=>(-10))).subscribe((x:number)=> (Number(playerpaddle.getAttribute("x"))>0?(playerpaddle.setAttribute("x",String(x+Number(playerpaddle.getAttribute("x"))))):0))
-    scoreboard()    
-    const random=getRandomArbitrary(-1,1.01)
-    const random2=getRandomArbitrary(-1,1.01)
+    
 
-    ball.setAttribute("vx","2")
-    ball.setAttribute("vy","-3")
-    const initialState:State=
+    //Obseravble stream for keyboard input
+    //arrow up movement
+    const arrowUp=fromEvent(document,"keydown").
+    pipe(filter((x:KeyboardEvent)=>x.key=="ArrowUp")).
+    pipe(filter(x=>Number(playerpaddle.getAttribute("y"))>5)).
+    pipe(map((x)=>(-10)))
+
+    //Observable stream for keyboard input
+    //arrow down movement
+    const arrowDown=fromEvent(document,'keydown').
+    pipe(filter((x:KeyboardEvent)=>x.key=="ArrowDown")).
+    pipe(filter(x=>Number(playerpaddle.getAttribute("y"))<545)).
+    pipe(map(x=>(10)))
+
+    //Function to update player paddle movement
+    const movement=(x:number,paddle:PaddleState):PaddleState=>{
+      return{
+        xpos:paddle.xpos,
+        ypos:paddle.ypos+x
+      }
+    }
+
+    //Initial state of player paddle: Following HTML hardcoded value
+    const initialPlayerPaddleState:PaddleState={
+      xpos:20,
+      ypos:300
+    }
+
+    //Initial State of player paddle: Following HTML hardcoded value
+    const initialAIPaddleState:PaddleState={
+      xpos:550,
+      ypos:280
+    }
+
+
+    //Merge the keyboard input stream together and subscribe to movement function
+    //Uses the scan function where it will accumulate value at each key arrow movement and released for the paddle to move
+    const paddlemovement=merge(arrowUp,arrowDown).
+    pipe(scan((x:PaddleState,y:number)=>movement(y,x),initialPlayerPaddleState)).
+    subscribe(x=>playerpaddle.setAttribute("y",String(x.ypos)))
+    
+
+
+    //Creates scoreboard at canvas //Function can be found at line 240++
+    scoreboard()
+
+    const playerscore=document.getElementById("playerscore")
+    const aiscore=document.getElementById("computerscore")
+    //Initial state of ball
+
+    const initialBallState:BallState=
     {yvelocity:Number(ball.getAttribute("vy")),
       xvelocity:Number(ball.getAttribute("vx")),
       speedBall:2,
-  
     }
+    //Initial state of player scores
     const initialScore:Scores={
       playerscore:0,
       computerscore:0
     }
 
+    //Ball reflection referecned from:
     //https://developer.mozilla.org/en-US/docs/Games/Tutorials/2D_Breakout_game_pure_JavaScript/Bounce_off_the_walls
 
-    const physics=(s:State)=>(user:Human,user2:AI):State=>
+    //Function to modify physics of the state of ball, takes in a State type and returns a State object
+    const physics=(s:BallState)=>(user:Controller,user2:Controller):BallState=>
     {
-      if (Number(ball.getAttribute("cy"))>589||Number(ball.getAttribute("cy"))<11)
+      if (Number(ball.getAttribute("cy"))>589||Number(ball.getAttribute("cy"))<11) //If ball touches the top and bottom wall, reverse y velocity
       return{
         yvelocity:-s.yvelocity,
         xvelocity:s.xvelocity,
         speedBall:s.speedBall
       }
 
-
-      if (user instanceof Human
+      // Logic of ball collision of paddle referenced from
+      //https://www.informit.com/articles/article.aspx?p=2180417&seqNum=2
         
-      &&(Number(ball.getAttribute("cx"))<(Number(playerpaddle.getAttribute("x"))+10+11)&&(
-      (Number(ball.getAttribute("cx"))+10+11>Number(playerpaddle.getAttribute("x"))))&&(Number(ball.getAttribute("cy"))+11+3>Number(playerpaddle.getAttribute("y")))&&
-      Number(ball.getAttribute("cy"))<Number(playerpaddle.getAttribute("y"))+11+3+50)){ 
-      return {
-        yvelocity:new Vector(s.xvelocity,s.yvelocity,playerpaddle,Number(ball.getAttribute("cy")),s.speedBall).vy(),
-        xvelocity:new Vector(s.xvelocity,s.yvelocity,computerpaddle,Number(ball.getAttribute("cy")),s.speedBall).vx(),
-        speedBall:s.speedBall
-      } }
-     
-      if(user2 instanceof AI&& (Number(ball.getAttribute("cx"))<(Number(computerpaddle.getAttribute("x"))+10+11)&&(
-        (Number(ball.getAttribute("cx"))+10+11>Number(computerpaddle.getAttribute("x"))))&&(Number(ball.getAttribute("cy"))+11+3>Number(computerpaddle.getAttribute("y")))&&
-        Number(ball.getAttribute("cy"))<Number(computerpaddle.getAttribute("y"))+11+3+50))
+        //Each condition checks for player paddle  colliision with ball depending on pos of ball and paddle.
+        if(Number(ball.getAttribute("cx"))<(Number(user.paddle.getAttribute("x"))+Number(ball.getAttribute("r"))+Number(user.paddle.getAttribute("width"))+1)
+        &&(
+        (Number(ball.getAttribute("cx"))+1+Number(ball.getAttribute("r"))+Number(user.paddle.getAttribute("width"))+1>Number(user.paddle.getAttribute("x"))))
+        &&(Number(ball.getAttribute("cy"))+Number(ball.getAttribute("r"))+4>Number(user.paddle.getAttribute("y")))&&
+        Number(ball.getAttribute("cy"))<Number(user.paddle.getAttribute("y"))+Number(ball.getAttribute("r"))+4+Number(user.paddle.getAttribute("height"))){ 
+        return {
+          yvelocity:new Vector(s.xvelocity,s.yvelocity,user.paddle,Number(ball.getAttribute("cy")),s.speedBall).vy(),
+          xvelocity:new Vector(s.xvelocity,s.yvelocity,user2.paddle,Number(ball.getAttribute("cy")),s.speedBall).vx(),
+          speedBall:s.speedBall
+        } }
+
+        //Same logic applied to user 2
+        if((Number(ball.getAttribute("cx"))<(Number(user2.paddle.getAttribute("x"))+1+Number(ball.getAttribute("r"))+Number(user.paddle.getAttribute("width")))
+        &&(
+        (Number(ball.getAttribute("cx"))+Number(ball.getAttribute("r"))+Number(user.paddle.getAttribute("width"))+1>Number(user2.paddle.getAttribute("x"))))&&
+        (Number(ball.getAttribute("cy"))+Number(ball.getAttribute("r"))+4>Number(user2.paddle.getAttribute("y")))&&
+        Number(ball.getAttribute("cy"))<Number(user2.paddle.getAttribute("y"))+Number(ball.getAttribute("r"))+4+Number(user.paddle.getAttribute("height"))))
+
         { return{
-          yvelocity:new Vector(s.xvelocity,s.yvelocity,computerpaddle,Number(ball.getAttribute("cy")),s.speedBall).vy(),
-          xvelocity:new Vector(s.xvelocity,s.yvelocity,computerpaddle,Number(ball.getAttribute("cy")),s.speedBall).vx(),
-         
+          yvelocity:new Vector(s.xvelocity,s.yvelocity,user2.paddle,Number(ball.getAttribute("cy")),s.speedBall).vy(),
+          xvelocity:new Vector(s.xvelocity,s.yvelocity,user2.paddle,Number(ball.getAttribute("cy")),s.speedBall).vx(),
           speedBall:s.speedBall
         }
       }
-      else{
+      else{ //if no colliison remain original state
         return s
       }
     }
 
-    const restartGame=fromEvent
 
-    //Endgame condition
+
+    //startGame$ observable created using interval. Interval emits numbers over a specified amount of time,
+    //In game logic is basically how fast is the game frame.
+
+    //takeWhile refers to the endgame condition of the game, which either player have to get a score of 7 before the game(observable) ends
+    // Repeat the observable if "Restart Game" button is clicked
     const startGame$=interval(60).pipe(takeWhile(x=>(Number(aiscore.getAttribute("value"))<7 && Number(playerscore.getAttribute("value"))<7))).pipe(repeat())
+
+    //This is the logic for ball out of canvas. If the ball is out of canvas, we reset the ball position
     startGame$.pipe(filter(x=>(Number(ball.getAttribute("cx"))>590) || Number(ball.getAttribute("cx"))<10)).subscribe(x=>{resetBall(ball)})
   
-    //AI movement
-    startGame$.pipe(map(x=>({x:Number(ball.getAttribute("cx")),y:Number(ball.getAttribute("cy"))}))).subscribe(obj=>Number(computerpaddle.getAttribute("y"))<0?computerpaddle.setAttribute("y",String(obj.y-20)):computerpaddle.setAttribute("y",String(-obj.y-20)))
-    startGame$.pipe(map(x=>({x:Number(ball.getAttribute("cx")),y:Number(ball.getAttribute("cy"))}))).subscribe(obj=>Number(computerpaddle.getAttribute("y"))<545?computerpaddle.setAttribute("y",String(obj.y-20)):computerpaddle.setAttribute("y",String(-obj.y-20)))
+    //AI movement following the ball, going upwards movement
+    startGame$.pipe(map((x:number)=>({x:Number(ball.getAttribute("cx")),y:Number(ball.getAttribute("cy"))}))).
+    subscribe(obj=>Number(computerpaddle.getAttribute("y"))<0?computerpaddle.setAttribute("y",String(obj.y-20)):computerpaddle.setAttribute("y",String(-obj.y-20)))
 
-    // const toggleStream=interval(60).pipe(map(x=>Number(ball.getAttribute("cx"))>590 || Number(ball.getAttribute("cx"))<10))
-    // const resultStream=toggleStream.pipe(filter(x=>x==true)).subscribe(x=>startGame$.takeUntil(toggleStream))
+    //AI movement following the ball, going downwards movement
+    startGame$.pipe(map((x:number)=>({x:Number(ball.getAttribute("cx")),y:Number(ball.getAttribute("cy"))}))).
+    subscribe((obj)=>Number(computerpaddle.getAttribute("y"))<545?computerpaddle.setAttribute("y",String(obj.y-20)):computerpaddle.setAttribute("y",String(-obj.y-20)))
 
-    const playerscore=document.getElementById("playerscore")
-    const aiscore=document.getElementById("computerscore")
+
+    const aiplayer=new AI(document.getElementById("computer"),1) //ai paddle object
+    const humanplayer=new Human(document.getElementById("player")) //player paddle object
+
 
     //This is for ball movement
-      // const ballMovement=startGame$.pipe(scan((x:State)=>physics(x)(new Human(playerpaddle),new AI(computerpaddle,1)),initialState)).pipe(takeWhile(x=>(Number(ball.getAttribute("cx"))<590) && Number(ball.getAttribute("cx"))>10))    //.subscribe(x=>(ball.setAttribute("cx",String(Number(ball.getAttribute("cx"))+x.xvelocity*x.speedBall)),ball.setAttribute("cy",String((Number(ball.getAttribute("cy")))+x.yvelocity*x.speedBall))))
+    //First we map the observable to the current ball State
+    //Apply physics function to the current ball state
+    //Result of the function, we apply the values to the ball to move the ball accordingly
     const ballMovement=startGame$.pipe(map(x=>({yvelocity:Number(ball.getAttribute("vy")),
     xvelocity:Number(ball.getAttribute("vx")),
-    speedBall:7,}))).pipe(map(x=>physics(x)(new Human(playerpaddle),new AI(computerpaddle,1)))).
-    subscribe(x=>{
+    speedBall:5,}))).
+    pipe(map((x:BallState)=>physics(x)(humanplayer,aiplayer))).
+    subscribe((x:BallState)=>{
     ball.setAttribute("cx",String(Number(ball.getAttribute("cx"))+x.xvelocity*x.speedBall)),
     ball.setAttribute("cy",String((Number(ball.getAttribute("cy")))+x.yvelocity*x.speedBall)),
     ball.setAttribute("vy",String(x.yvelocity)),
     ball.setAttribute("vx",String(x.xvelocity))
   })
-    //update score when player win the round
-    startGame$ .pipe(filter(x=>Number(ball.getAttribute("cx"))>590))
-    .subscribe(x=>(updateScoreboard(updatescore({playerscore:Number(playerscore.getAttribute("value")),computerscore:Number(aiscore.getAttribute("value"))})(playerscore))))
+
+
+    //update score when player win the round, if the ball is past the canvas of CPU side, then we update the score for player
+    //using updateScoreboard and update score function --- details of the functions below
+    startGame$ .pipe(filter((x:number)=>Number(ball.getAttribute("cx"))>590))
+    .subscribe((x:number)=>(updateScoreboard(updatescore({playerscore:Number(playerscore.getAttribute("value")),computerscore:Number(aiscore.getAttribute("value"))})(playerscore))))
   
  
-    //update score when cpu win  the round
-    startGame$ .pipe(filter(x=>Number(ball.getAttribute("cx"))<10))
-    .subscribe(x=>(updateScoreboard(updatescore(
+    //update score when CPU win the round, if the ball is past the canvas of player side, then we update the score for player
+    //using updateScoreboard and update score function --- details of the functions below
+    startGame$ .pipe(filter((x:number)=>Number(ball.getAttribute("cx"))<10))
+    .subscribe((x:number)=>(updateScoreboard(updatescore(
       {playerscore:Number(playerscore.getAttribute("value")),
     computerscore:Number(aiscore.getAttribute("value"))
   }
     )(aiscore))))
 
-    // startGame$.pipe()
-    const restart=document.getElementById("restart")
-    fromEvent(restart,"click").subscribe(x=>{resetScoreboard(),resetBall(document.getElementById("ball"))})
+
+    const restart=document.getElementById("restart") //Get restart game button element from HTML
+
+    //Creates an mouse event observable that subsribes on click of the restart game button. 
+    //Resets the scoreboard
+    //Resets the ball position
+    fromEvent(restart,"click").subscribe((x:Event)=>{resetScoreboard(),resetBall(document.getElementById("ball"))})
     
     
   
@@ -174,7 +259,8 @@ function pong():void {
 
 
 
-
+  //Function to construct the scoreboard on webpage
+  //Appends element to webpage,
   function scoreboard():void {
     const div=document.getElementById("game")
     const playerScore=document.createElement("number")
@@ -188,7 +274,9 @@ function pong():void {
     computerScore.setAttribute("id","computerscore")
     computerScore.innerHTML="Computer Score: " + computerScore.getAttribute("value")
     div.appendChild(computerScore)}
-    
+  
+  //function to update score of player or cpu
+  //takes in a score state and then paddle to return update score state  
   const updatescore=(s:Scores)=>(winner:HTMLElement):Scores=>{
     if (winner.id==="playerscore")
     return{
@@ -203,6 +291,7 @@ function pong():void {
     }
   }
 
+  //update scoreboard html using score state
   const updateScoreboard=(s:Scores):void=>{
     const playerscore=document.getElementById("playerscore")
     const aiscore=document.getElementById("computerscore")
@@ -212,6 +301,7 @@ function pong():void {
     aiscore.setAttribute("value",String(s.computerscore))
   }
 
+  //Reset scoreboard in the event of someone restarting game. Resets HTML elements in scoreboard
   const resetScoreboard=():void=>{
     const playerscore=document.getElementById("playerscore")
     const aiscore=document.getElementById("computerscore")
@@ -221,19 +311,13 @@ function pong():void {
     aiscore.setAttribute("value","0")
 
   }
- 
 
-    
-    // if(y + dy > canvas.height || y + dy < 0) {
-    //   dy = -dy;
   
   // the following simply runs your pong function on window load.  Make sure to leave it in place.
   if (typeof window != 'undefined')
     window.onload = ()=>{
-      fromEvent(document.getElementById("start"),"click").pipe(take(1)).subscribe(x=>pong())
-      // fromEvent(document.getElementById("restart"),"click").subscribe(x=>(windowClear(),alert()))
-      const restart=document.getElementById("restart")
-      
+      fromEvent(document.getElementById("start"),"click").pipe(take(1)).subscribe(x=>pong()) // //start game button needs to be clicked to start game
+      //Can only be clicked once      
 
 
     }

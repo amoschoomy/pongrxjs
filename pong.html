@@ -15,15 +15,16 @@
     </head>
     <div class="game"id="game">
     <body>
-        <h1>PONG</h1>
+        <h3>PONG</h3>
+        <p> Use arrow up and down keys to navigate your paddle. Click 'Start Game' to start the game, and 'Restart Game' to restart the game</p>
         <p style="text-indent:15%">   PLAYER   VS COMPUTER</p>
         </div>
         <svg id="canvas" width="600" height="600"/
         <svg height="0" width="0">
         <line x1="300" y1="0" x2="300" y2="600" style="stroke:white;stroke-width:10"/>
-        <rect width="10" height="50" x="20" y="550" style="fill:white" id="player"/>
-        <rect width="10" height="50" x="535" y="280" style="fill:white" id="computer" />
-        <circle r="10" cx="300" cy="300" style="fill:cyan" id="ball" />
+        <rect width="10" height="50" x="20" y="300" style="fill:white" id="player"/>
+        <rect width="10" height="50" x="570" y="280" style="fill:white" id="computer" />
+        <circle r="10" cx="300" cy="300" vx="-2" vy="1.5" style="fill:cyan" id="ball" />
         </svg>
         <button id="start" type="button">Start Game</button>
         <button id="restart" type="button"> Restart Game</button>
