@@ -31,8 +31,8 @@ type BallState=Readonly<{
 
 //Interface for player and computer score
 type Scores=Readonly<{
-  playerscore:number
-  computerscore:number
+  playerscore:String
+  computerscore:String
 }>
 
 //Interface for state of the paddle
@@ -73,6 +73,76 @@ const resetBall=(ball:HTMLElement)=>{
   ball.setAttribute("vx",String(new RNG(69).nextFloat()*4-1))
   ball.setAttribute("vy",String(new RNG(126).nextFloat()*4-1))
 }
+
+
+  //Function to construct the scoreboard on webpage
+  //Appends element to webpage,
+  function scoreboard():void {
+    const div=document.getElementById("game")
+    const playerScore=document.createElement("number")
+    playerScore.setAttribute("value","0")
+    playerScore.setAttribute("id","playerscore")
+    div.append(playerScore)
+    playerScore.innerHTML="Player Score: "+ playerScore.getAttribute("value")
+    const computerScore=document.createElement("number")
+    computerScore.style.marginLeft="15%"
+    computerScore.setAttribute("value","0")
+    computerScore.setAttribute("id","computerscore")
+    computerScore.innerHTML="Computer Score: " + computerScore.getAttribute("value")
+    div.appendChild(computerScore)}
+  
+  //function to update score of player or cpu
+  //takes in a score state and then paddle to return update score state  
+  const updatescore=(s:Scores)=>(winner:HTMLElement):Scores=>{
+    if (winner.id==="playerscore"){
+      if(s.playerscore!=="6")
+    return{
+      playerscore:String(Number(s.playerscore)+1),
+      computerscore:s.computerscore
+    }
+      else{
+        return{
+          playerscore:String(Number(s.playerscore)+1)+" CONGRATS CHAMPION",
+      computerscore:s.computerscore
+        }
+      }
+  }
+    else if(s.computerscore!=="6"){
+      return{
+        playerscore:s.playerscore,
+        computerscore:String(Number(s.computerscore)+1)
+      }
+    }
+    else{
+      return{
+        playerscore:s.playerscore+" YOU LOSER",
+        computerscore:String(Number(s.computerscore)+1)
+      }
+    }
+  }
+
+  //update scoreboard html using score state
+  const updateScoreboard=(s:Scores):void=>{
+    const playerscore=document.getElementById("playerscore")
+    const aiscore=document.getElementById("computerscore")
+    playerscore.innerHTML="Player Score: "+ s.playerscore
+    aiscore.innerHTML="Computer Score: "+ s.computerscore
+    playerscore.setAttribute("value",String(s.playerscore))
+    aiscore.setAttribute("value",String(s.computerscore))
+  }
+
+  //Reset scoreboard in the event of someone restarting game. Resets HTML elements in scoreboard
+  const resetScoreboard=():void=>{
+    const playerscore=document.getElementById("playerscore")
+    const aiscore=document.getElementById("computerscore")
+    playerscore.innerHTML="Player Score: "+ 0
+    aiscore.innerHTML="Computer Score: "+ 0
+    playerscore.setAttribute("value","0")
+    aiscore.setAttribute("value","0")
+
+  }
+
+  
 
 //Pong function to run the game
 function pong():void {
@@ -144,8 +214,8 @@ function pong():void {
 
     //Initial state of player scores
     const initialScore:Scores={
-      playerscore:0,
-      computerscore:0
+      playerscore:"0",
+      computerscore:"0"
     }
 
     //Ball reflection referecned from:
@@ -238,15 +308,15 @@ function pong():void {
     //update score when player win the round, if the ball is past the canvas of CPU side, then we update the score for player
     //using updateScoreboard and update score function --- details of the functions below
     startGame$ .pipe(filter((x:number)=>Number(ball.getAttribute("cx"))>590))
-    .subscribe((x:number)=>(updateScoreboard(updatescore({playerscore:Number(playerscore.getAttribute("value")),computerscore:Number(aiscore.getAttribute("value"))})(playerscore))))
+    .subscribe((x:number)=>(updateScoreboard(updatescore({playerscore:(playerscore.getAttribute("value")),computerscore:(aiscore.getAttribute("value"))})(playerscore))))
   
  
     //update score when CPU win the round, if the ball is past the canvas of player side, then we update the score for player
     //using updateScoreboard and update score function --- details of the functions below
     startGame$ .pipe(filter((x:number)=>Number(ball.getAttribute("cx"))<10))
     .subscribe((x:number)=>(updateScoreboard(updatescore(
-      {playerscore:Number(playerscore.getAttribute("value")),
-    computerscore:Number(aiscore.getAttribute("value"))
+      {playerscore:(playerscore.getAttribute("value")),
+    computerscore:(aiscore.getAttribute("value"))
   }
     )(aiscore))))
 
@@ -266,60 +336,6 @@ function pong():void {
 
 
 
-  //Function to construct the scoreboard on webpage
-  //Appends element to webpage,
-  function scoreboard():void {
-    const div=document.getElementById("game")
-    const playerScore=document.createElement("number")
-    playerScore.setAttribute("value","0")
-    playerScore.setAttribute("id","playerscore")
-    div.append(playerScore)
-    playerScore.innerHTML="Player Score: "+ playerScore.getAttribute("value")
-    const computerScore=document.createElement("number")
-    computerScore.style.marginLeft="15%"
-    computerScore.setAttribute("value","0")
-    computerScore.setAttribute("id","computerscore")
-    computerScore.innerHTML="Computer Score: " + computerScore.getAttribute("value")
-    div.appendChild(computerScore)}
-  
-  //function to update score of player or cpu
-  //takes in a score state and then paddle to return update score state  
-  const updatescore=(s:Scores)=>(winner:HTMLElement):Scores=>{
-    if (winner.id==="playerscore")
-    return{
-      playerscore:s.playerscore+1,
-      computerscore:s.computerscore
-    }
-    else{
-      return{
-        playerscore:s.playerscore,
-        computerscore:s.computerscore+1
-      }
-    }
-  }
-
-  //update scoreboard html using score state
-  const updateScoreboard=(s:Scores):void=>{
-    const playerscore=document.getElementById("playerscore")
-    const aiscore=document.getElementById("computerscore")
-    playerscore.innerHTML="Player Score: "+ s.playerscore
-    aiscore.innerHTML="Computer Score: "+ s.computerscore
-    playerscore.setAttribute("value",String(s.playerscore))
-    aiscore.setAttribute("value",String(s.computerscore))
-  }
-
-  //Reset scoreboard in the event of someone restarting game. Resets HTML elements in scoreboard
-  const resetScoreboard=():void=>{
-    const playerscore=document.getElementById("playerscore")
-    const aiscore=document.getElementById("computerscore")
-    playerscore.innerHTML="Player Score: "+ 0
-    aiscore.innerHTML="Computer Score: "+ 0
-    playerscore.setAttribute("value","0")
-    aiscore.setAttribute("value","0")
-
-  }
-
-  
   // the following simply runs your pong function on window load.  Make sure to leave it in place.
   if (typeof window != 'undefined')
     window.onload = ()=>{
