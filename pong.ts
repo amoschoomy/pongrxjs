@@ -23,6 +23,7 @@ class RNG {
 }
 
 //Interface for ball state
+//Avoid global mutable variables
 type BallState=Readonly<{
   yvelocity:number
   xvelocity:number 
@@ -30,12 +31,14 @@ type BallState=Readonly<{
 }>
 
 //Interface for player and computer score
+//Avoid global mutable variables
 type Scores=Readonly<{
   playerscore:String
   computerscore:String
 }>
 
 //Interface for state of the paddle
+//Avoid global mutable variables
 type PaddleState=Readonly<{
   xpos:number
   ypos:number
@@ -44,9 +47,11 @@ type PaddleState=Readonly<{
 
 
 //class for human paddle
+//Organises paddle element manipulations in a cleaner way
 class Human{constructor(public readonly paddle:HTMLElement){}}
 
 //class for AI paddle, difficulty is default unless specified by user
+//Organises paddle element manipulations in a cleaner way
 class AI{constructor(public readonly paddle:HTMLElement,public readonly difficulty=1){}}
 
 type Controller= AI|Human
@@ -92,7 +97,8 @@ const resetBall=(ball:HTMLElement)=>{
     div.appendChild(computerScore)}
   
   //function to update score of player or cpu
-  //takes in a score state and then paddle to return update score state  
+  //takes in a score state and then paddle to return update score state
+  //ensure function has no side effects 
   const updatescore=(s:Scores)=>(winner:HTMLElement):Scores=>{
     if (winner.id==="playerscore"){
       if(s.playerscore!=="6")
@@ -165,6 +171,7 @@ function pong():void {
 
     //Obseravble stream for keyboard input
     //arrow up movement
+    //filters for ArrowUp key and player paddle being at the approirate position to move upwards(paddle must be in canvas)
     const arrowUp=fromEvent(document,"keydown").
     pipe(filter((x:KeyboardEvent)=>x.key=="ArrowUp")).
     pipe(filter(x=>Number(playerpaddle.getAttribute("y"))>5)).
@@ -172,6 +179,7 @@ function pong():void {
 
     //Observable stream for keyboard input
     //arrow down movement
+    //filters for ArrowUp key and player paddle being at the approirate position to move upwards(paddle must be in canvas)
     const arrowDown=fromEvent(document,'keydown').
     pipe(filter((x:KeyboardEvent)=>x.key=="ArrowDown")).
     pipe(filter(x=>Number(playerpaddle.getAttribute("y"))<545)).
@@ -191,16 +199,16 @@ function pong():void {
       ypos:300
     }
 
-    //Initial State of player paddle: Following HTML hardcoded value
+    //Initial State of AI paddle: Following HTML hardcoded value
     const initialAIPaddleState:PaddleState={
-      xpos:550,
+      xpos:570,
       ypos:280
     }
 
 
     //Merge the keyboard input stream together and subscribe to movement function
-    //Uses the scan function where it will accumulate value at each key arrow movement and released for the paddle to move
-    const paddlemovement=merge(arrowUp,arrowDown).
+    //Uses the scan function where it will accumulate value at each key arrow movement and emits the value at each correct key press for the paddle to move
+    merge(arrowUp,arrowDown).
     pipe(scan((x:PaddleState,y:number)=>movement(y,x),initialPlayerPaddleState)).
     subscribe(x=>playerpaddle.setAttribute("y",String(x.ypos)))
     
@@ -211,6 +219,10 @@ function pong():void {
 
     const playerscore=document.getElementById("playerscore")
     const aiscore=document.getElementById("computerscore")
+    
+    const aiplayer=new AI(document.getElementById("computer"),1) //ai paddle object
+    const humanplayer=new Human(document.getElementById("player")) //player paddle object
+
 
     //Initial state of player scores
     const initialScore:Scores={
@@ -235,6 +247,7 @@ function pong():void {
       //https://www.informit.com/articles/article.aspx?p=2180417&seqNum=2
         
         //Each condition checks for player paddle  colliision with ball depending on pos of ball and paddle.
+        //Takes in a state and return a new state of updated velcoties
         if(Number(ball.getAttribute("cx"))<(Number(user.paddle.getAttribute("x"))+Number(ball.getAttribute("r"))+Number(user.paddle.getAttribute("width"))+1)
         &&(
         (Number(ball.getAttribute("cx"))+1+Number(ball.getAttribute("r"))+Number(user.paddle.getAttribute("width"))+1>Number(user.paddle.getAttribute("x"))))
@@ -277,17 +290,12 @@ function pong():void {
     startGame$.pipe(filter(x=>(Number(ball.getAttribute("cx"))>590) || Number(ball.getAttribute("cx"))<10)).subscribe(x=>{resetBall(ball)})
   
     //AI movement following the ball, going upwards movement
-    startGame$.pipe(map((x:number)=>({x:Number(ball.getAttribute("cx")),y:Number(ball.getAttribute("cy"))}))).
-    subscribe(obj=>Number(computerpaddle.getAttribute("y"))<0?computerpaddle.setAttribute("y",String(obj.y-20)):computerpaddle.setAttribute("y",String(-obj.y-20)))
+    startGame$.pipe(map((x:number)=>(Number(ball.getAttribute("cy"))))).
+    subscribe(obj=>Number(computerpaddle.getAttribute("y"))<0?computerpaddle.setAttribute("y",String(obj-20)):computerpaddle.setAttribute("y",String(-obj-20)))
 
-    //AI movement following the ball, going downwards movement
-    startGame$.pipe(map((x:number)=>({x:Number(ball.getAttribute("cx")),y:Number(ball.getAttribute("cy"))}))).
-    subscribe((obj)=>Number(computerpaddle.getAttribute("y"))<545?computerpaddle.setAttribute("y",String(obj.y-20)):computerpaddle.setAttribute("y",String(-obj.y-20)))
-
-
-    const aiplayer=new AI(document.getElementById("computer"),1) //ai paddle object
-    const humanplayer=new Human(document.getElementById("player")) //player paddle object
-
+    // //AI movement following the ball, going downwards movement
+    startGame$.pipe(map((x:number)=>(Number(ball.getAttribute("cy"))))).
+    subscribe((obj)=>Number(computerpaddle.getAttribute("y"))<545?computerpaddle.setAttribute("y",String(obj-20)):computerpaddle.setAttribute("y",String(-obj-20)))
 
     //This is for ball movement
     //First we map the observable to the current ball State
